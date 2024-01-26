@@ -4,8 +4,12 @@ from io import BytesIO
 import base64
 import requests
 from PIL import Image
-from pprint import pprint
 import ddddocr
+import logging
+
+logging.basicConfig(level=logging.INFO,  # 设置日志级别为DEBUG，可以根据需要修改
+                    format='%(asctime)s - %(levelname)s - %(message)s')
+
 
 ocr = ddddocr.DdddOcr(beta=True)
 
@@ -59,9 +63,8 @@ class yaohaocheck(object):
             "validCodeKey": captcha["validCodeKey"]
         }
         response = requests.post(url, headers=headers, json=data)
-        pprint(response.status_code)
         # 打印响应内容
-        print(response.text)
+        logging.info(f"登录响应:{response.text}")
         return response.json()['data']['token']
 
     def getCaptcha(self):
@@ -112,25 +115,29 @@ class yaohaocheck(object):
 
                 # 提取 applyStatus
                 apply_status = data.get('data', {}).get('model', {}).get('personApply', {}).get('applyStatus')
+                logging.info(f"apply_status: {apply_status}")
 
                 if not apply_status:
                     message = f"广州牌摇号情况查询异常报警 response: {response.text}!"
+                    logging.info(message)
                     requests.post(self.dingding_url, json={"msgtype": "text", "text": {"content": message}})
                 # 判断是否为 NEW 或 CENSOR_APPROVED
                 elif apply_status not in ["NEW", "CENSOR_APPROVED"]:
                     # 发送钉钉消息报警的代码（替换成你的实际代码）
                     message = f"广州牌摇号报警 applyStatus is {apply_status}!"
+                    logging.info(message)
                     requests.post(self.dingding_url, json={"msgtype": "text", "text": {"content": message}})
+                    
                 return True
             else:
                 # 请求失败，输出错误信息
-                print(f"Request failed with status code: {response.status_code}")
-                print(response.text)
+                logging.info(f"Request failed with status code: {response.status_code}, response:{response.text}")
                 # 发送钉钉消息报警的代码（替换成你的实际代码）
                 message = f"广州牌摇号情况查询异常报警 Request failed with status code: {response.status_code}!"
+                logging.info(message)
                 requests.post(self.dingding_url, json={"msgtype": "text", "text": {"content": message}})
         except Exception as e:
-            print(e)
+            logging.error(f'An error occurred: {e}', exc_info=True)
             message = f"广州牌摇号情况查询异常报警 未知异常: {e}"
             requests.post(self.dingding_url, json={"msgtype": "text", "text": {"content": message}})
         return False
